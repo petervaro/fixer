@@ -1,0 +1,12 @@
+{
+	"name": "fixer",
+	"authors":
+    [
+		"Peter Varo"
+	],
+	"description": "Foreign exchange rates and currency converter",
+	"copyright": "Copyright (C), Peter Varo",
+	"license": "GPL-3.0",
+    "targetName": "fixer",
+    "targetPath": "bin"
+}
