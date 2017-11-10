@@ -2,14 +2,17 @@
 ** INFO */
 
 import std.stdio            : stderr,
-                              writeln;
+                              writeln,
+                              writefln;
 import std.net.curl         : get,
                               CurlException;
 import std.file             : exists,
                               write,
                               readText,
                               timeLastModified,
+                              mkdirRecurse,
                               FileException;
+import std.path             : expandTilde;
 import std.json             : JSONValue,
                               parseJSON,
                               JSONException;
@@ -32,7 +35,8 @@ enum
 }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-enum RatesJSON = "fixer.json";
+enum RatesDir  = "~/.config/fixer";
+enum RatesFile = "rates.json";
 
 
 /*----------------------------------------------------------------------------*/
@@ -127,7 +131,7 @@ LICENSE
 
     You should have received a copy of the GNU General Public License along with
     this program, most likely a file in the root directory, called 'LICENSE'. If
-    not, see http://www.gnu.org/licenses.
+    not, see <http://www.gnu.org/licenses>.
 ";
 
 
@@ -160,9 +164,10 @@ main(string[] argv)
 
     JSONValue rates;
     bool      getLatestRates = true;
+    string    ratesPath      = expandTilde(RatesDir ~ "/" ~ RatesFile);
 
     /* Try to use existing local data if it is not too old */
-    if (exists(RatesJSON))
+    if (exists(ratesPath))
     {
         version (Posix)
             immutable fixerTZ = PosixTimeZone.getTimeZone("CET");
@@ -170,7 +175,7 @@ main(string[] argv)
             immutable fixerTZ = WindowsTimeZone.getTimeZone("CET");
 
         immutable localTime    = Clock.currTime(fixerTZ);
-        immutable fileModified = timeLastModified(RatesJSON).toOtherTZ(fixerTZ);
+        immutable fileModified = timeLastModified(ratesPath).toOtherTZ(fixerTZ);
 
         /* If file was edited today and older than 4PM */
         if (fileModified.year  == localTime.year  &&
@@ -184,17 +189,17 @@ main(string[] argv)
         {
             try
             {
-                rates = parseJSON(readText(RatesJSON));
+                rates = parseJSON(readText(ratesPath));
             }
             catch (FileException error)
             {
                 stderr.writeln("Cannot read rates from file '",
-                               RatesJSON, "': ", error.msg);
+                               ratesPath, "': ", error.msg);
                 return ExitFailure;
             }
             catch (JSONException error)
             {
-                stderr.writeln("Invalid rates in file '", RatesJSON,
+                stderr.writeln("Invalid rates in file '", ratesPath,
                                "' (expected valid JSON): ", error.msg);
                 return ExitFailure;
             }
@@ -204,11 +209,14 @@ main(string[] argv)
 
     /* Get latest rates, parse the response JSON and save into a file */
     if (getLatestRates)
+    {
+        char[] response;
+
+        /* Download rates */
         try
         {
-            const(char[]) response = get("https://api.fixer.io/latest");
-            rates = parseJSON(response);
-            write(RatesJSON, response);
+            response = get("https://api.fixer.io/latest");
+            rates    = parseJSON(response);
         }
         catch (CurlException error)
         {
@@ -227,9 +235,24 @@ main(string[] argv)
         catch (FileException error)
         {
             stderr.writeln(
-                "Cannot save rates to file '", RatesJSON, "': ", error.msg);
+                "Cannot save rates to file '", ratesPath, "': ", error.msg);
             return ExitFailure;
         }
+
+        /* Create folders for the file and save it */
+        string ratesDir = expandTilde(RatesDir);
+        try
+        {
+            mkdirRecurse(ratesDir);
+            write(ratesPath, response);
+        }
+        catch (FileException error)
+        {
+            stderr.writeln(
+                "Cannot create directories '", ratesDir, "': ", error.msg);
+            return ExitFailure;
+        }
+    }
 
     /* Get rates */
     rates = rates.object["rates"];
@@ -239,6 +262,22 @@ main(string[] argv)
         toCurrency == "EUR" ? 1.0 : rates.object[toCurrency].floating;
 
     /* Calculate, format and print the conversion */
-    writeln(format("%.2f", amount/from*to));
+    writefln("%.2f", amount/from*to);
     return ExitSuccess;
+}
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+unittest
+{
+    /* Test support texts */
+    assert(main(["fixer"]) == ExitSuccess);
+    assert(main(["fixer", "-h"]) == ExitSuccess);
+    assert(main(["fixer", "--help"]) == ExitSuccess);
+
+    /* Test invalid behaviours */
+    assert(main(["fixer", "1"]) == ExitFailure);
+
+    /* Test valid behaviours */
+    assert(main(["fixer", "1", "gbp", "eur"]) == ExitSuccess);
+    assert(main(["fixer", "1", "gbp", "in", "eur"]) == ExitSuccess);
+    assert(main(["fixer", "1", "gbp", "to", "eur"]) == ExitSuccess);
 }
