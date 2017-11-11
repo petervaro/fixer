@@ -1,4 +1,7 @@
-![fixer][0]
+<img src="img/logo.png?raw=true"
+     alt="fixer"
+     width="256"
+     height="256"/>
 
 fixer
 =====
@@ -41,7 +44,7 @@ $ bash install.sh
 License
 -------
 
-Copyright (C) 2017 Peter Varo
+Copyright (C) 2017 [Peter Varo](www.petervaro.com)
 
 This program is free software: you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free Software
@@ -55,5 +58,3 @@ FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with
 this program, most likely a file in the root directory, called 'LICENSE'. If
 not, see http://www.gnu.org/licenses.
-
-[0]: img/logo.png?raw=true "fixer"
