@@ -14,11 +14,13 @@ import std.file             : exists,
                               FileException;
 import std.path             : expandTilde;
 import std.json             : JSONValue,
+                              JSON_TYPE,
                               parseJSON,
                               JSONException;
 import std.string           : toUpper;
 import std.format           : format;
-import std.conv             : to;
+import std.conv             : to,
+                              ConvException;
 import std.datetime.systime : Clock;
 
 version (Posix)
@@ -36,14 +38,13 @@ enum
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 enum RatesDir  = "~/.config/fixer";
-enum RatesFile = "rates.json";
+enum RatesFile = "latest-rates.json";
 
 
 /*----------------------------------------------------------------------------*/
 immutable usageText = "
-Foreign exchange rates and currency converter
-Usage: fixer <amount> <currency-from> [in|to] <currency-to>
-Help: -h or --help
+Foreign exchange rates and currency converter (more info: --help)
+   fixer <amount> <currency-from> [in|to] <currency-to>
 ";
 
 
@@ -139,6 +140,8 @@ LICENSE
 int
 main(string[] argv)
 {
+    // TODO: Implement support for historical rates: -H, --history 2010-01-10
+
     /* Handle arguments */
     if (argv.length <= 1)
     {
@@ -158,7 +161,18 @@ main(string[] argv)
         return ExitFailure;
     }
 
-    immutable amount       = to!double(argv[1]);
+    double amount;
+    try
+    {
+        amount = to!double(argv[1]);
+    }
+    catch (ConvException error)
+    {
+        stderr.writeln(
+            "First argument is not a number: ", argv[1], ": ", error.msg);
+        return ExitFailure;
+    }
+
     string    fromCurrency = toUpper(argv[2]),
               toCurrency   = toUpper(argv[$ > 4 ? 4 : 3]);
 
@@ -240,11 +254,10 @@ main(string[] argv)
         }
 
         /* Create folders for the file and save it */
-        string ratesDir = expandTilde(RatesDir);
+        string ratesDir = ratesPath[0..$ - (RatesFile.length + 1)];
         try
         {
             mkdirRecurse(ratesDir);
-            write(ratesPath, response);
         }
         catch (FileException error)
         {
@@ -252,10 +265,64 @@ main(string[] argv)
                 "Cannot create directories '", ratesDir, "': ", error.msg);
             return ExitFailure;
         }
+
+        try
+        {
+            write(ratesPath, response);
+        }
+        catch (FileException error)
+        {
+            stderr.writeln(
+                "Cannot write rates to file '", ratesPath, "': ", error.msg);
+            return ExitFailure;
+        }
+    }
+
+    /* Validate and sanitise data from the JSON */
+    if (rates.type != JSON_TYPE.OBJECT)
+    {
+        stderr.writeln("Invalid JSON format in file '", ratesPath,
+                       "': expected Object at the top-level");
+        return ExitFailure;
+    }
+    else if ("rates" !in rates)
+    {
+        stderr.writeln("Invalid JSON format in file '", ratesPath,
+                       "': extepected to have a \"rates\" key");
+        return ExitFailure;
+    }
+
+    rates = rates.object["rates"];
+    if (rates.type != JSON_TYPE.OBJECT)
+    {
+        stderr.writeln("Invalid JSON format in file '", ratesPath,
+                       "': expected Object for the key \"rates\"");
+        return ExitFailure;
+    }
+    else if (fromCurrency !in rates)
+    {
+        stderr.writeln("Unknown currency: ", fromCurrency);
+        return ExitFailure;
+    }
+    else if (rates.object[fromCurrency].type != JSON_TYPE.FLOAT)
+    {
+        stderr.writeln("Invalid JSON format in file '", ratesPath,
+                       "': expected number for the key \"", fromCurrency, "\"");
+        return ExitFailure;
+    }
+    else if (toCurrency !in rates)
+    {
+        stderr.writeln("Unknown currency: ", toCurrency);
+        return ExitFailure;
+    }
+    else if (rates.object[toCurrency].type != JSON_TYPE.FLOAT)
+    {
+        stderr.writeln("Invalid JSON format in file '", ratesPath,
+                       "': expected number for the key \"", toCurrency, "\"");
+        return ExitFailure;
     }
 
     /* Get rates */
-    rates = rates.object["rates"];
     immutable from =
         fromCurrency == "EUR" ? 1.0 : rates.object[fromCurrency].floating;
     immutable to =
@@ -275,6 +342,11 @@ unittest
 
     /* Test invalid behaviours */
     assert(main(["fixer", "1"]) == ExitFailure);
+    assert(main(["fixer", "x"]) == ExitFailure);
+    assert(main(["fixer", "1", "eur"]) == ExitFailure);
+    assert(main(["fixer", "1", "x", "y"]) == ExitFailure);
+    assert(main(["fixer", "1", "eur", "y"]) == ExitFailure);
+    assert(main(["fixer", "1", "x", "eur"]) == ExitFailure);
 
     /* Test valid behaviours */
     assert(main(["fixer", "1", "gbp", "eur"]) == ExitSuccess);

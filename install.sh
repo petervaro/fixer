@@ -1,4 +1,4 @@
 ## INFO ##
 ## INFO ##
 
-dub build --build=release && sudo cp bin/fixer /usr/local/bin;
+dub build --build=release --compiler=ldc && sudo cp bin/fixer /usr/local/bin;
