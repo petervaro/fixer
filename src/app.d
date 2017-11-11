@@ -299,27 +299,35 @@ main(string[] argv)
                        "': expected Object for the key \"rates\"");
         return ExitFailure;
     }
-    else if (fromCurrency !in rates)
+    else if (fromCurrency != "EUR")
     {
-        stderr.writeln("Unknown currency: ", fromCurrency);
-        return ExitFailure;
+        if (fromCurrency !in rates)
+        {
+            stderr.writeln("Unknown currency: ", fromCurrency);
+            return ExitFailure;
+        }
+        else if (rates.object[fromCurrency].type != JSON_TYPE.FLOAT)
+        {
+            stderr.writeln("Invalid JSON format in file '", ratesPath,
+                           "': expected number for the key \"", fromCurrency,
+                           "\"");
+            return ExitFailure;
+        }
     }
-    else if (rates.object[fromCurrency].type != JSON_TYPE.FLOAT)
+    else if (toCurrency != "EUR")
     {
-        stderr.writeln("Invalid JSON format in file '", ratesPath,
-                       "': expected number for the key \"", fromCurrency, "\"");
-        return ExitFailure;
-    }
-    else if (toCurrency !in rates)
-    {
-        stderr.writeln("Unknown currency: ", toCurrency);
-        return ExitFailure;
-    }
-    else if (rates.object[toCurrency].type != JSON_TYPE.FLOAT)
-    {
-        stderr.writeln("Invalid JSON format in file '", ratesPath,
-                       "': expected number for the key \"", toCurrency, "\"");
-        return ExitFailure;
+        if (toCurrency !in rates)
+        {
+            stderr.writeln("Unknown currency: ", toCurrency);
+            return ExitFailure;
+        }
+        else if (rates.object[toCurrency].type != JSON_TYPE.FLOAT)
+        {
+            stderr.writeln("Invalid JSON format in file '", ratesPath,
+                           "': expected number for the key \"", toCurrency,
+                           "\"");
+            return ExitFailure;
+        }
     }
 
     /* Get rates */
@@ -342,8 +350,8 @@ unittest
 
     /* Test invalid behaviours */
     assert(main(["fixer", "1"]) == ExitFailure);
-    assert(main(["fixer", "x"]) == ExitFailure);
     assert(main(["fixer", "1", "eur"]) == ExitFailure);
+    assert(main(["fixer", "x", "gbp", "eur"]) == ExitFailure);
     assert(main(["fixer", "1", "x", "y"]) == ExitFailure);
     assert(main(["fixer", "1", "eur", "y"]) == ExitFailure);
     assert(main(["fixer", "1", "x", "eur"]) == ExitFailure);

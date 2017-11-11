@@ -1,0 +1,9 @@
+# https://hub.docker.com/r/base/archlinux/
+image: base/archlinux
+
+before_script:
+  - pacman -Syy dmd dub --needed --noconfirm
+
+run_pylint:
+  stage: test
+  script: dub run --build=unittest

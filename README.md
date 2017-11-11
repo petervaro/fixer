@@ -1,3 +1,5 @@
+[![build-status][0]][1]
+
 <img src="img/logo.png?raw=true"
      alt="fixer"
      width="256"
@@ -58,3 +60,6 @@ FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with
 this program, most likely a file in the root directory, called 'LICENSE'. If
 not, see http://www.gnu.org/licenses.
+
+[0]: https://gitlab.com/petervaro/fixer/badges/master/build.svg
+[1]: https://gitlab.com/petervaro/pcd/pipelines
