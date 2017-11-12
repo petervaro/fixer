@@ -6,4 +6,4 @@ before_script:
 
 run_pylint:
   stage: test
-  script: dub run --build=unittest
+  script: dub test
