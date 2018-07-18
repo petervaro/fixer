@@ -17,16 +17,17 @@ import std.json             : JSONValue,
                               JSON_TYPE,
                               parseJSON,
                               JSONException;
-import std.string           : toUpper;
+import std.string           : toUpper,
+                              strip;
 import std.format           : format;
 import std.conv             : to,
                               ConvException;
 import std.datetime.systime : Clock;
 
 version (Posix)
-    import std.datetime.timezone : PosixTimeZone;
+    import std.datetime.timezone : TimeZone = PosixTimeZone;
 else version (Windows)
-    import std.datetime.timezone : WindowsTimeZone;
+    import std.datetime.timezone : TimeZone = WindowsTimeZone;
 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
@@ -37,8 +38,9 @@ enum
 }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-enum RatesDir  = "~/.config/fixer";
-enum RatesFile = "latest-rates.json";
+enum BaseDir          = "~/.fixer";
+enum RatesFile        = "latest-rates.json";
+enum APIAccessKeyFile = "api-access-key.txt";
 
 
 /*----------------------------------------------------------------------------*/
@@ -173,37 +175,37 @@ main(string[] argv)
         return ExitFailure;
     }
 
-    string    fromCurrency = toUpper(argv[2]),
-              toCurrency   = toUpper(argv[$ > 4 ? 4 : 3]);
+    string    fromCurrency = argv[2].toUpper,
+              toCurrency   = argv[$ > 4 ? 4 : 3].toUpper;
 
     JSONValue rates;
     bool      getLatestRates = true;
-    string    ratesPath      = expandTilde(RatesDir ~ "/" ~ RatesFile);
+    string    ratesPath      = expandTilde(BaseDir ~ "/" ~ RatesFile);
+    string    accessPath     = expandTilde(BaseDir ~ "/" ~ APIAccessKeyFile);
+
+    if (!accessPath.exists)
+    {
+        stderr.writeln("Missing API access key.  Get a free one from: " ~
+                       "https://fixer.io and save it in: ", accessPath);
+        return ExitFailure;
+    }
 
     /* Try to use existing local data if it is not too old */
-    if (exists(ratesPath))
+    if (ratesPath.exists)
     {
-        version (Posix)
-            immutable fixerTZ = PosixTimeZone.getTimeZone("CET");
-        else version (Windows)
-            immutable fixerTZ = WindowsTimeZone.getTimeZone("CET");
-
+        immutable fixerTZ      = TimeZone.getTimeZone("CET");
         immutable localTime    = Clock.currTime(fixerTZ);
         immutable fileModified = timeLastModified(ratesPath).toOtherTZ(fixerTZ);
 
-        /* If file was edited today and older than 4PM */
+        /* If file was edited at the same hour of current execution */
         if (fileModified.year  == localTime.year  &&
             fileModified.month == localTime.month &&
-            /* Yesterday after 4PM */
-            ((fileModified.day == localTime.day - 1 &&
-              fileModified.hour > 16) ||
-            /* Today before 4PM */
-             (fileModified.day == localTime.day &&
-              fileModified.hour < 16)))
+            fileModified.day   == localTime.day &&
+            fileModified.hour  == localTime.hour)
         {
             try
             {
-                rates = parseJSON(readText(ratesPath));
+                rates = ratesPath.readText.parseJSON;
             }
             catch (FileException error)
             {
@@ -224,13 +226,26 @@ main(string[] argv)
     /* Get latest rates, parse the response JSON and save into a file */
     if (getLatestRates)
     {
+        string apiAccessKey;
+
+        /* Get API access key */
+        try
+            apiAccessKey = accessPath.readText.strip;
+        catch (FileException error)
+        {
+            stderr.writeln("Cannot read API access key from file '",
+                           accessPath, "': ", error.msg);
+            return ExitFailure;
+        }
+
         char[] response;
 
         /* Download rates */
         try
         {
-            response = get("https://api.fixer.io/latest");
-            rates    = parseJSON(response);
+            response = get("http://data.fixer.io/api/latest?access_key=" ~
+                           apiAccessKey ~ "&base=EUR");
+            rates    = response.parseJSON;
         }
         catch (CurlException error)
         {
