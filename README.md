@@ -46,7 +46,7 @@ $ bash install.sh
 License
 -------
 
-Copyright (C) 2017 [Peter Varo](www.petervaro.com)
+Copyright (C) 2017-2018 [Peter Varo](www.petervaro.com)
 
 This program is free software: you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free Software

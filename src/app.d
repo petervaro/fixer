@@ -371,8 +371,11 @@ unittest
     assert(main(["fixer", "1", "eur", "y"]) == ExitFailure);
     assert(main(["fixer", "1", "x", "eur"]) == ExitFailure);
 
-    /* Test valid behaviours */
-    assert(main(["fixer", "1", "gbp", "eur"]) == ExitSuccess);
-    assert(main(["fixer", "1", "gbp", "in", "eur"]) == ExitSuccess);
-    assert(main(["fixer", "1", "gbp", "to", "eur"]) == ExitSuccess);
+    version (WithAPIAccessKey)
+    {
+        /* Test valid behaviours */
+        assert(main(["fixer", "1", "gbp", "eur"]) == ExitSuccess);
+        assert(main(["fixer", "1", "gbp", "in", "eur"]) == ExitSuccess);
+        assert(main(["fixer", "1", "gbp", "to", "eur"]) == ExitSuccess);
+    }
 }
