@@ -120,7 +120,7 @@ AUTHOR
     Written by Peter Varo.
 
 LICENSE
-    Copyright (C) 2017 Peter Varo
+    Copyright (C) 2017-2018 Peter Varo
 
     This program is free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by the Free
@@ -371,11 +371,8 @@ unittest
     assert(main(["fixer", "1", "eur", "y"]) == ExitFailure);
     assert(main(["fixer", "1", "x", "eur"]) == ExitFailure);
 
-    version (WithAPIAccessKey)
-    {
-        /* Test valid behaviours */
-        assert(main(["fixer", "1", "gbp", "eur"]) == ExitSuccess);
-        assert(main(["fixer", "1", "gbp", "in", "eur"]) == ExitSuccess);
-        assert(main(["fixer", "1", "gbp", "to", "eur"]) == ExitSuccess);
-    }
+    /* Test valid behaviours */
+    assert(main(["fixer", "1", "gbp", "eur"]) == ExitSuccess);
+    assert(main(["fixer", "1", "gbp", "in", "eur"]) == ExitSuccess);
+    assert(main(["fixer", "1", "gbp", "to", "eur"]) == ExitSuccess);
 }

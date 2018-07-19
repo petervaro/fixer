@@ -4,8 +4,8 @@ image: base/archlinux
 before_script:
   - pacman -Syy dmd dub --needed --noconfirm
   - mkdir -p ~/.fixer
-  - printf 'dummy' > ~/.fixer/api-access-key.txt
+  - printf "$FIXER_API_ACCESS_KEY" > ~/.fixer/api-access-key.txt
 
-run_pylint:
+unit_tests:
   stage: test
   script: dub test
