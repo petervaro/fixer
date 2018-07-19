@@ -3,6 +3,7 @@ image: base/archlinux
 
 before_script:
   - pacman -Syy dmd dub --needed --noconfirm
+  - mkdir -p ~/.fixer
   - printf 'dummy' > ~/.fixer/api-access-key.txt
 
 run_pylint:
